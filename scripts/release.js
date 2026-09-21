@@ -143,22 +143,34 @@ async function main() {
   console.log('');
 
   // 1) 确保 Windows zip 已生成
-  const zipPath = path.join(ROOT, 'win-zip', '音乐解锁-' + version + '-win.zip');
-  if (!fs.existsSync(zipPath)) {
+  //    按“目录扫描 + 版本号匹配”定位，不依赖具体文件名（文件名可能被改成 umweb- 等）
+  const zipDir = path.join(ROOT, 'win-zip');
+  const findZip = () => {
+    if (!fs.existsSync(zipDir)) return null;
+    const zips = fs.readdirSync(zipDir).filter((f) => f.toLowerCase().endsWith('.zip'));
+    if (!zips.length) return null;
+    const matched = zips.find((f) => f.includes(version)) || zips.sort().pop();
+    return path.join(zipDir, matched);
+  };
+
+  let zipPath = findZip();
+  if (!zipPath) {
     console.log('[1/4] 未找到 Windows 压缩包，先生成 ...');
     const r = spawnSync(process.execPath, [path.join(__dirname, 'build-win-zip.js')], { cwd: ROOT, stdio: 'inherit' });
     if (r.status !== 0) {
       console.error('ERROR: 生成压缩包失败。');
       process.exit(1);
     }
+    zipPath = findZip();
   } else {
-    console.log('[1/4] 已存在 Windows 压缩包。');
+    console.log('[1/4] 已存在 Windows 压缩包: ' + path.basename(zipPath));
   }
 
   // 2) 收集附件
   console.log('[2/4] 收集附件 ...');
   const assets = [];
-  if (fs.existsSync(zipPath)) assets.push(zipPath);
+  if (zipPath && fs.existsSync(zipPath)) assets.push(zipPath);
+  else console.log('  警告：未找到可上传的 Windows 压缩包。');
   const fpkDir = path.join(ROOT, 'fpk');
   if (fs.existsSync(fpkDir)) {
     const fpk = fs.readdirSync(fpkDir).filter((f) => f.toLowerCase().endsWith('.fpk'));
