@@ -36,7 +36,6 @@ yarn-error.log*
 /sha256sum.txt
 
 # 本地构建产物 / 日志 / 测试数据 / 依赖（二次开发追加）
-node_modules
 build.log
 devserver.log
 /testdata

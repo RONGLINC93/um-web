@@ -1,0 +1,6 @@
+{
+  "name": "@unlock-music/joox-crypto",
+  "version": "0.0.1",
+  "description": "Local stub (private registry git.unlock-music.dev is unavailable / 403). Joox decryption disabled.",
+  "main": "index.js"
+}
