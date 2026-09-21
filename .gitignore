@@ -4,6 +4,7 @@
 /coverage
 /fpk
 /fnos/umweb/app/web
+/win-zip
 
 # local env files
 .env.local
