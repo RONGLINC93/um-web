@@ -1,0 +1,4 @@
+#!/bin/bash
+# 卸载后：纯前端静态站点无服务器侧数据，var 目录由飞牛默认保留，无需删除
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] uninstall_callback ${TRIM_APPNAME:-unknown} ${TRIM_APPVER:-unknown}" >> "${TRIM_PKGVAR:-/tmp}/install.log" 2>/dev/null
+exit 0

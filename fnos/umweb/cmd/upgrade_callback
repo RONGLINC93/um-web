@@ -1,0 +1,4 @@
+#!/bin/bash
+# 升级后：程序目录被重新解压，纯前端静态站点无数据软链需要处理，仅记录日志
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] upgrade_callback ${TRIM_OLD_APPVER:-unknown} -> ${TRIM_APPVER:-unknown}" >> "${TRIM_PKGVAR:-/tmp}/install.log" 2>/dev/null
+exit 0

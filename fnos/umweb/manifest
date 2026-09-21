@@ -1,0 +1,16 @@
+appname               = umweb
+version               = 1.10.8
+display_name          = 音乐解锁
+desc                  = 音乐解锁 Web 版（legacy v1.10.8）—— 在浏览器中解锁已购的加密音乐（ncm / qmc / mgg / mflac 等），纯前端运行，无需服务器。
+platform              = all
+source                = thirdparty
+maintainer           = um-web
+maintainer_url        = https://git.unlock-music.dev/um/web
+distributor           = um-web
+distributor_url       = https://git.unlock-music.dev/um/web
+os_min_version        = 1.1.8
+desktop_uidir         = ui
+desktop_applaunchname = umweb.main
+service_port          = 9520
+install_dep_apps      = nodejs_v20
+ctl_stop              = true

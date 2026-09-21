@@ -1,0 +1,129 @@
+#!/bin/bash
+# ============================================================================
+# 音乐解锁 (um-web legacy) · 生命周期脚本
+#   start  : 启动静态服务（成功返回 0，失败返回 1 并写入 TRIM_TEMP_LOGFILE）
+#   stop   : 停止服务（成功返回 0）
+#   status : 运行中返回 0，未运行返回 3
+# 说明：纯前端静态站点，无需持久化数据目录。
+# ============================================================================
+set -u
+
+# 程序本体：app/server/ 会被解压到 TRIM_APPDEST 下（与 ems 模板一致：<根>/server/server.js）
+APP_DIR="${TRIM_APPDEST}/server"
+ENTRY="${APP_DIR}/server.js"
+
+# 持久化目录：仅用于日志 / pid（升级、卸载时保留）
+PKG_VAR="${TRIM_PKGVAR}"
+LOG_FILE="${PKG_VAR}/app.log"
+PID_FILE="${PKG_VAR}/app.pid"
+
+# 服务端口：来自 manifest 的 service_port
+PORT="${TRIM_SERVICE_PORT:-9520}"
+
+# Node.js 运行时由 install_dep_apps = nodejs_v20 提供
+NODE_DIR="/var/apps/nodejs_v20/target/bin"
+NODE_BIN="${NODE_DIR}/node"
+export PATH="${NODE_DIR}:${PATH}"
+export TZ="${TZ:-Asia/Shanghai}"
+
+log() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "${LOG_FILE}" 2>/dev/null
+}
+
+fail() {
+  # V1.1.8+ 会把该文件内容弹窗展示给用户
+  if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then
+    echo "$*" > "${TRIM_TEMP_LOGFILE}" 2>/dev/null
+  fi
+  log "ERROR: $*"
+  exit 1
+}
+
+list_pids() {
+  pgrep -f "${ENTRY}" 2>/dev/null
+}
+
+is_running() {
+  [ -n "$(list_pids)" ]
+}
+
+start_process() {
+  if is_running; then
+    log "服务已在运行，忽略本次启动请求"
+    return 0
+  fi
+
+  [ -x "${NODE_BIN}" ] || NODE_BIN="$(command -v node 2>/dev/null || true)"
+  [ -n "${NODE_BIN}" ] && [ -x "${NODE_BIN}" ] || fail "未找到 Node.js 运行时（nodejs_v20），请先在应用中心安装"
+  [ -f "${ENTRY}" ] || fail "程序文件缺失：${ENTRY}"
+
+  mkdir -p "${PKG_VAR}" 2>/dev/null
+
+  cd "${APP_DIR}" || fail "无法进入程序目录 ${APP_DIR}"
+  # setsid: 让 node 进入独立会话/进程组，生命周期脚本退出后服务不被 fnOS 误杀
+  PORT="${PORT}" setsid "${NODE_BIN}" "${ENTRY}" >> "${LOG_FILE}" 2>&1 < /dev/null &
+  echo $! > "${PID_FILE}"
+
+  # 等待服务起来（最多 10 秒）
+  local i=0
+  while [ ${i} -lt 10 ]; do
+    sleep 1
+    if is_running; then
+      log "启动成功：http://127.0.0.1:${PORT}"
+      return 0
+    fi
+    i=$((i + 1))
+  done
+  fail "服务启动后立即退出，请查看日志：${LOG_FILE}"
+}
+
+stop_process() {
+  local pids i
+  pids="$(list_pids)"
+  if [ -z "${pids}" ]; then
+    rm -f "${PID_FILE}"
+    return 0
+  fi
+
+  log "正在停止服务：${pids}"
+  kill -TERM ${pids} 2>/dev/null
+
+  i=0
+  while [ ${i} -lt 10 ]; do
+    is_running || break
+    sleep 1
+    i=$((i + 1))
+  done
+
+  if is_running; then
+    log "优雅停止超时，强制结束"
+    kill -KILL $(list_pids) 2>/dev/null
+    sleep 1
+  fi
+
+  rm -f "${PID_FILE}"
+  log "服务已停止"
+  return 0
+}
+
+case "$1" in
+  start)
+    start_process
+    exit $?
+    ;;
+  stop)
+    stop_process
+    exit $?
+    ;;
+  status)
+    if is_running; then
+      exit 0
+    else
+      exit 3
+    fi
+    ;;
+  *)
+    echo "用法: $0 {start|stop|status}" >&2
+    exit 1
+    ;;
+esac

@@ -1,0 +1,13 @@
+{
+  ".url": {
+    "umweb.main": {
+      "title": "音乐解锁",
+      "icon": "images/icon_{0}.png",
+      "type": "url",
+      "protocol": "http",
+      "port": "9520",
+      "url": "/",
+      "allUsers": true
+    }
+  }
+}
