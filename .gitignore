@@ -3,7 +3,7 @@
 /build
 /coverage
 /fpk
-/fnos/umweb/web
+/fnos/umweb/app/web
 
 # local env files
 .env.local
