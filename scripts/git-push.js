@@ -8,13 +8,17 @@
  *   GITHUB_REPO_URL=https://github.com/<owner>/<repo>.git   # 可选，用于推断 owner
  *   GITHUB_USER=<owner>                                     # 可选，覆盖推断结果
  *
- * 行为：git add -A -> 询问提交说明 -> git commit -> 带令牌推送（不写入 git 配置）
- * 用法：node scripts/git-push.js   或双击 推送.bat
+ * 行为：git add -A -> git commit -> 带令牌推送（不写入 git 配置）
+ * 全程无需任何输入。提交说明的取值顺序：
+ *   1. 命令行参数：node scripts/git-push.js "修复了xxx"
+ *   2. 环境变量 COMMIT_MSG：set COMMIT_MSG=修复了xxx
+ *   3. 自动生成：chore: 更新 <N> 个文件 <时间>
+ *
+ * 用法：node scripts/git-push.js [提交说明]   或双击 推送.bat
  */
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const readline = require('readline');
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_BRANCH = 'main';
@@ -50,24 +54,18 @@ function gitQuiet(args) {
   return r.status === 0;
 }
 
-// ---------- 交互式输入（非交互环境直接返回默认值） ----------
-function ask(question, fallback) {
-  return new Promise((resolve) => {
-    if (!process.stdin.isTTY) {
-      resolve(fallback);
-      return;
-    }
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    let answered = false;
-    rl.question(question, (answer) => {
-      answered = true;
-      rl.close();
-      resolve((answer || '').trim() || fallback);
-    });
-    rl.on('close', () => {
-      if (!answered) resolve(fallback);
-    });
-  });
+// ---------- 提交说明：参数 > 环境变量 > 自动生成，全程不阻塞等待输入 ----------
+function resolveMessage(changedCount) {
+  const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const auto = 'chore: 更新 ' + changedCount + ' 个文件 ' + stamp;
+  return (process.argv[2] || '').trim() || (process.env.COMMIT_MSG || '').trim() || auto;
+}
+
+// 取已暂存文件数（用于自动生成说明）
+function stagedFileCount() {
+  const r = spawnSync('git', ['diff', '--cached', '--name-only'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0 || !r.stdout) return 0;
+  return r.stdout.split(/\r?\n/).filter(Boolean).length;
 }
 
 async function main() {
@@ -112,8 +110,7 @@ async function main() {
   console.log('[2/3] 提交 ...');
   const hasStaged = !gitQuiet(['diff', '--cached', '--quiet']);
   if (hasStaged) {
-    const fallback = 'chore: 更新代码 ' + new Date().toISOString().slice(0, 19).replace('T', ' ');
-    const message = await ask('提交说明（直接回车使用默认）: ', fallback);
+    const message = resolveMessage(stagedFileCount());
     if (!git(['commit', '-m', message])) {
       console.error('ERROR: git commit 失败。');
       process.exit(1);
