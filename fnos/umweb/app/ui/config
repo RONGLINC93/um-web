@@ -1,6 +1,6 @@
 {
   ".url": {
-    "umweb": {
+    "umweb.main": {
       "title": "音乐解锁",
       "icon": "images/icon_{0}.png",
       "type": "url",

@@ -8,7 +8,10 @@ const path = require('path');
 
 const WEB_DIR = path.join(__dirname, '..', 'web');
 const PORT = parseInt(process.env.PORT, 10) || 9520;
-const HOST = '0.0.0.0';
+// 监听所有网络接口（IPv4 + IPv6 双栈）。
+// 注意：显式绑定 '0.0.0.0' 只会监听 IPv4，会导致通过 IPv6 地址无法访问；
+// 不传 host 时 Node 监听 :: 并开启双栈，IPv4 与 IPv6 均可访问。可用 HOST 环境变量覆盖。
+const HOST = process.env.HOST || undefined;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -78,11 +81,11 @@ const server = http.createServer((req, res) => {
 });
 
 server.on('error', (err) => {
-  console.error('[um-web] server failed to listen on ' + HOST + ':' + PORT +
+  console.error('[um-web] server failed to listen on ' + (HOST || '0.0.0.0') + ':' + PORT +
     ' (' + (err && err.code) + '): ' + (err && err.message));
   process.exit(1);
 });
 
 server.listen(PORT, HOST, () => {
-  console.log('[um-web] static server listening on http://' + HOST + ':' + PORT);
+  console.log('[um-web] static server listening on http://' + (HOST || '0.0.0.0') + ':' + PORT);
 });
