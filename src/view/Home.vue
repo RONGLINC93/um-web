@@ -227,6 +227,9 @@
   display: flex;
   width: 100%;
   height: 100%;
+  // 外层容器是 100% 尺寸 + 1px 边框，必须用 border-box，
+  // 否则总尺寸比父级多 2px，右侧与底部的边框会被 el-main 的 overflow: hidden 裁掉
+  box-sizing: border-box;
   overflow: hidden;
   background: var(--um-panel-bg);
   border: 1px solid var(--um-panel-border);
@@ -296,20 +299,21 @@
   }
 }
 .ff-side-drop.ff-compact {
-  >>> .el-upload-dragger {
+  // 注意：scss 中不能用 >>>（会被编译成无效的 "> > >"），必须用 ::v-deep
+  ::v-deep .el-upload-dragger {
     padding: 18px 10px;
     border-radius: 10px;
   }
-  >>> .um-dropzone-icon {
+  ::v-deep .um-dropzone-icon {
     font-size: 30px;
   }
-  >>> .um-dropzone-title {
+  ::v-deep .um-dropzone-title {
     font-size: 13px;
     margin-top: 6px;
     line-height: 1.4;
   }
-  >>> .um-dropzone-sub,
-  >>> .um-dropzone-tip {
+  ::v-deep .um-dropzone-sub,
+  ::v-deep .um-dropzone-tip {
     display: none;
   }
 }

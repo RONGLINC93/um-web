@@ -105,11 +105,12 @@ export default {
 <style lang="scss" scoped>
 .um-dropzone-upload {
   // 放大的拖拽区
-  >>> .el-upload {
+  // 注意：scss 中不能用 >>>（会被编译成无效的 "> > >"），必须用 ::v-deep
+  ::v-deep .el-upload {
     width: 100%;
     display: block;
   }
-  >>> .el-upload-dragger {
+  ::v-deep .el-upload-dragger {
     width: 100%;
     height: auto;
     padding: 52px 24px;
@@ -119,7 +120,7 @@ export default {
     transition: border-color 0.2s ease, background 0.2s ease;
     box-sizing: border-box;
   }
-  >>> .el-upload-dragger:hover {
+  ::v-deep .el-upload-dragger:hover {
     border-color: #85ce61;
     background: var(--um-drop-bg-hover);
   }

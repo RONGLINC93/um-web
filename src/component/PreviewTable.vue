@@ -84,11 +84,12 @@ export default {
 
 <style lang="scss" scoped>
 // 紧凑化：缩小单元格内边距与行高
-.preview-table >>> .el-table td,
-.preview-table >>> .el-table th {
+// 注意：scss 中不能用 >>>（会被编译成无效的 "> > >"），必须用 ::v-deep
+.preview-table ::v-deep .el-table td,
+.preview-table ::v-deep .el-table th {
   padding: 5px 0;
 }
-.preview-table >>> .el-table .cell {
+.preview-table ::v-deep .el-table .cell {
   padding-left: 8px;
   padding-right: 8px;
   line-height: 1.4;
