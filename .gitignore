@@ -40,3 +40,5 @@ yarn-error.log*
 build.log
 devserver.log
 /testdata
+
+发布日志.txt

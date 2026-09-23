@@ -9,6 +9,9 @@ setlocal
 set "NODE_OPTIONS=--openssl-legacy-provider"
 cd /d "%~dp0"
 
+rem When launched from this release flow, packaging scripts skip their interactive pause
+set "UM_NO_PAUSE=1"
+
 if not exist .env (
   echo   ERROR: .env file not found.
   echo   Create .env in project root, for example:

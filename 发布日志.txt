@@ -9,10 +9,12 @@
   - umweb-1.10.8.fpk
 
 [3/4] 准备 Release ...
-  已创建 Release（ID 394248214）。
+  已存在该版本的 Release，复用之（ID 394248214）。
 
 [4/4] 上传附件 ...
+  已删除同名旧附件: umweb-1.10.8-win.zip (HTTP 204)
   已上传: umweb-1.10.8-win.zip (1.37 MB)
+  已删除同名旧附件: umweb-1.10.8.fpk (HTTP 204)
   已上传: umweb-1.10.8.fpk (1.51 MB)
 
 发布完成: https://github.com/RONGLINC93/um-web/releases/tag/v1.10.8

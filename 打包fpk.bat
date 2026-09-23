@@ -89,10 +89,10 @@ echo.
 
 rem --- open the output folder and highlight the package just built ---
 rem     (explorer returns a non-zero exit code even on success, so ignore it)
-explorer /select,"%OUT%"
+if not defined UM_NO_PAUSE explorer /select,"%OUT%"
 
 echo.
-pause
+if not defined UM_NO_PAUSE pause
 exit /b 0
 
 :nofnpack
@@ -103,12 +103,12 @@ echo   https://developer.fnnas.com/docs/cli/fnpack/
 echo The downloaded file has no extension - rename it to fnpack.exe and put it in:
 echo   %FNOS%
 echo.
-pause
+if not defined UM_NO_PAUSE pause
 exit /b 1
 
 :fail
 echo.
 echo Build FAILED. See the output above.
 echo.
-pause
+if not defined UM_NO_PAUSE pause
 exit /b 1
