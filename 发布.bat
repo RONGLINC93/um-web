@@ -19,15 +19,18 @@ if not exist .env (
   exit /b 1
 )
 
-node scripts\release.js
+node scripts\release.js > 发布日志.txt 2>&1
 set "RC=%ERRORLEVEL%"
 
 echo.
+type 发布日志.txt
+echo.
 if not "%RC%"=="0" (
-  echo   发布失败，退出码 %RC%。请查看上面的错误信息。
+  echo   发布失败，退出码 %RC%。详情见 发布日志.txt。
   pause
   exit /b %RC%
 )
 
+echo   发布完成，详情见 发布日志.txt。
 pause
 exit /b 0
