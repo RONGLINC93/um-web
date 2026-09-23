@@ -24,7 +24,7 @@
           <span>{{ scope.row.artist }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="专辑" min-width="120" show-overflow-tooltip>
+      <el-table-column label="专辑" min-width="120" show-overflow-tooltip class-name="col-album" label-class-name="col-album">
         <template #default="scope">
           <span>{{ scope.row.album }}</span>
         </template>
@@ -122,6 +122,27 @@ export default {
   white-space: nowrap;
   .el-button + .el-button {
     margin-left: 6px;
+  }
+}
+
+// ============ 移动端适配 ============
+@media (max-width: 768px) {
+  // 窄屏隐藏「专辑」列，避免横向溢出过多
+  ::v-deep .col-album {
+    display: none;
+  }
+  // 封面与单元格进一步紧凑
+  .cover {
+    width: 40px;
+    height: 40px;
+  }
+  ::v-deep .el-table td,
+  ::v-deep .el-table th {
+    padding: 4px 0;
+  }
+  ::v-deep .el-table .cell {
+    padding-left: 6px;
+    padding-right: 6px;
   }
 }
 </style>

@@ -66,7 +66,7 @@
         <div class="ff-list">
           <div v-if="tableData.length === 0" class="um-empty">
             <i class="el-icon-folder-opened" />
-            <p>把加密音乐拖到左侧或本区域，或点击左侧选择文件开始解锁</p>
+            <p>把加密音乐拖到上方区域或本区域，或点击上方「选择文件」开始解锁</p>
           </div>
           <PreviewTable
             v-else
@@ -80,10 +80,13 @@
         </div>
 
         <!-- 使用方法与支持的格式 -->
-        <div class="ff-help">
-          <div class="ff-help-title">使用方法和支持的格式</div>
+        <details class="ff-help" :open="!isMobile">
+          <summary class="ff-help-title">
+            使用方法和支持的格式
+            <i class="ff-help-toggle el-icon-arrow-down" />
+          </summary>
           <p class="ff-help-usage">
-            将加密音乐文件拖入上方区域或左侧拖拽区，或点击左侧「选择文件」添加；选择输出格式后，使用顶部工具栏下载即可解锁。
+            将加密音乐文件拖入拖拽区，或点击「选择文件」添加；选择输出格式后，使用顶部工具栏下载即可解锁。
           </p>
           <ul class="ff-help-formats">
             <li><span class="ff-help-chk">[x]</span> QQ 音乐 (.qmc0/.qmc2/.qmc3/.qmcflac/.qmcogg/.tkm)</li>
@@ -98,7 +101,7 @@
             <li><span class="ff-help-chk">[x]</span> Android 版喜马拉雅文件格式 (.x2m/.x3m)</li>
             <li><span class="ff-help-chk">[x]</span> 咪咕音乐格式 (.mg3d)</li>
           </ul>
-        </div>
+        </details>
       </div>
 
       <!-- 右下角可收起播放器 -->
@@ -443,30 +446,48 @@
   display: flex;
   flex-direction: column;
 }
-// 使用方法与支持的格式
+// 使用方法与支持的格式（可折叠）
 .ff-help {
   margin: 20px 0 0;
-  padding: 16px 18px;
   border: 1px solid var(--um-panel-border);
   border-radius: 10px;
   background: var(--um-panel-bg);
   flex-shrink: 0;
+  &[open] .ff-help-toggle {
+    transform: rotate(180deg);
+  }
 }
 .ff-help-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 18px;
   font-size: 15px;
   font-weight: 700;
   color: var(--um-text-main);
-  margin-bottom: 8px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none; // 隐藏原生三角
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+.ff-help-toggle {
+  font-size: 14px;
+  color: var(--um-text-comment);
+  transition: transform 0.18s ease;
 }
 .ff-help-usage {
-  margin: 0 0 12px;
+  margin: 0;
+  padding: 0 18px 12px;
   font-size: 13px;
   line-height: 1.7;
   color: var(--um-text-comment);
 }
 .ff-help-formats {
   margin: 0;
-  padding: 0;
+  padding: 0 18px 16px;
   list-style: none;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -763,6 +784,130 @@
     color: var(--um-text-comment);
   }
 }
+
+// ============ 移动端适配 ============
+@media (max-width: 768px) {
+  // 整体改为纵向：左侧导航变顶部栏
+  .ff {
+    flex-direction: column;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+  .ff-side {
+    width: 100%;
+    flex-direction: column;
+    border-right: none;
+    border-bottom: 1px solid var(--um-panel-border);
+    padding: 10px 12px;
+    overflow-y: visible;
+  }
+  .ff-brand {
+    padding: 2px 4px 10px;
+    font-size: 16px;
+    i {
+      font-size: 20px;
+    }
+  }
+  // 导航横向滚动，隐藏分组标题与描述
+  .ff-nav {
+    display: flex;
+    flex: none;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ff-nav-group {
+    display: none;
+  }
+  .ff-nav-desc {
+    display: none;
+  }
+  .ff-nav-item {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 8px 14px;
+    white-space: nowrap;
+  }
+  // 拖拽区在移动端作为「选择文件」按钮，压成一条横向细条
+  .ff-side-drop.ff-compact {
+    margin-top: 4px;
+    ::v-deep .el-upload-dragger {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px;
+    }
+    ::v-deep .um-dropzone-icon {
+      font-size: 24px;
+    }
+    ::v-deep .um-dropzone-title {
+      font-size: 13px;
+      margin-top: 0;
+    }
+  }
+  .ff-side-tip {
+    display: none;
+  }
+
+  .ff-main {
+    min-width: 0;
+  }
+  .ff-toolbar {
+    padding: 8px 10px;
+    gap: 8px;
+    .el-button {
+      margin: 0;
+    }
+  }
+  .ff-body {
+    padding: 12px;
+  }
+  .ff-help {
+    margin: 14px 0 0;
+  }
+  .ff-help-formats {
+    grid-template-columns: 1fr;
+  }
+  .ff-status {
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    padding: 8px 12px;
+  }
+  // 悬浮播放器贴底自适应宽度
+  .ff-player {
+    left: 8px;
+    right: 8px;
+    bottom: 56px;
+  }
+  .ff-player-card {
+    width: auto;
+  }
+  // 弹窗宽度自适应
+  .ff-set-dialog,
+  .ff-about-dialog {
+    ::v-deep .el-dialog {
+      width: 92% !important;
+      max-width: 440px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .ff-brand {
+    font-size: 15px;
+  }
+  .ff-toolbar .el-button {
+    flex: 1 1 auto;
+  }
+}
 </style>
 
 <script>
@@ -809,6 +954,7 @@ export default {
       mp3ProgressText: '',
       dragDepth: 0,
       playerExpanded: false,
+      isMobile: false,
       playing_row: null,
       isPlaying: false,
       currentTime: 0,
@@ -848,7 +994,18 @@ export default {
       if (val) this.showDirectlySave();
     },
   },
+  mounted() {
+    this.updateMobile();
+    this._onResize = () => this.updateMobile();
+    window.addEventListener('resize', this._onResize);
+  },
+  beforeDestroy() {
+    if (this._onResize) window.removeEventListener('resize', this._onResize);
+  },
   methods: {
+    updateMobile() {
+      this.isMobile = window.matchMedia('(max-width: 768px)').matches;
+    },
     async showSuccess(data) {
       if (this.instant_save) {
         await this.saveFile(data);
