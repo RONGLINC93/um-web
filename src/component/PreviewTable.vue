@@ -2,7 +2,7 @@
   <div class="preview-table">
     <el-table
       :data="tableData"
-      :max-height="maxHeight"
+      height="100%"
       style="width: 100%"
       @selection-change="handleSelectionChange"
     >
@@ -56,8 +56,6 @@ export default {
   props: {
     tableData: { type: Array, required: true },
     policy: { type: Number, required: true },
-    // 列表可视高度上限（px），超出后表格内部滚动，表头保持吸顶
-    maxHeight: { type: [Number, String], default: 440 },
   },
 
   methods: {
@@ -83,6 +81,17 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+// 填满父级弹性容器，表格内部滚动
+.preview-table {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  ::v-deep .el-table {
+    flex: 1;
+    min-height: 0;
+  }
+}
 // 紧凑化：缩小单元格内边距与行高
 // 注意：scss 中不能用 >>>（会被编译成无效的 "> > >"），必须用 ::v-deep
 .preview-table ::v-deep .el-table td,

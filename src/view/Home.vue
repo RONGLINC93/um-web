@@ -9,21 +9,26 @@
       <div class="ff-nav">
         <div class="ff-nav-group">输出音频格式</div>
         <div class="ff-nav-item" :class="{ active: outputFormat === 'mp3' }" @click="outputFormat = 'mp3'">
-          <i class="el-icon-files" /> MP3
+          <div class="ff-nav-main"><i class="el-icon-files" /> MP3</div>
+          <div class="ff-nav-desc">转为通用 MP3（约 128kbps），兼容性最好</div>
         </div>
         <div class="ff-nav-item" :class="{ active: outputFormat === 'original' }" @click="outputFormat = 'original'">
-          <i class="el-icon-document" /> 原始格式
+          <div class="ff-nav-main"><i class="el-icon-document" /> 原始格式</div>
+          <div class="ff-nav-desc">保持原文件编码与音质，不做转码</div>
         </div>
         <div class="ff-nav-group">工具</div>
         <div class="ff-nav-item" @click="showConfigDialog = true">
-          <i class="el-icon-setting" /> 解密设定
+          <div class="ff-nav-main"><i class="el-icon-setting" /> 解密设定</div>
+          <div class="ff-nav-desc">JOOX 等格式需填写设备 UUID</div>
         </div>
         <div class="ff-nav-group">系统</div>
         <div class="ff-nav-item" @click="showSettingsDialog = true">
-          <i class="el-icon-setting" /> 设置
+          <div class="ff-nav-main"><i class="el-icon-setting" /> 设置</div>
+          <div class="ff-nav-desc">文件名、输出等偏好</div>
         </div>
         <div class="ff-nav-item" @click="showAboutDialog = true">
-          <i class="el-icon-info" /> 关于
+          <div class="ff-nav-main"><i class="el-icon-info" /> 关于</div>
+          <div class="ff-nav-desc">版本与支持格式一览</div>
         </div>
       </div>
 
@@ -72,6 +77,27 @@
             @play="changePlaying"
             @selection-change="onSelectionChange"
           />
+        </div>
+
+        <!-- 使用方法与支持的格式 -->
+        <div class="ff-help">
+          <div class="ff-help-title">使用方法和支持的格式</div>
+          <p class="ff-help-usage">
+            将加密音乐文件拖入上方区域或左侧拖拽区，或点击左侧「选择文件」添加；选择输出格式后，使用顶部工具栏下载即可解锁。
+          </p>
+          <ul class="ff-help-formats">
+            <li><span class="ff-help-chk">[x]</span> QQ 音乐 (.qmc0/.qmc2/.qmc3/.qmcflac/.qmcogg/.tkm)</li>
+            <li><span class="ff-help-chk">[x]</span> Moo 音乐格式 (.bkcmp3/.bkcflac/...)</li>
+            <li><span class="ff-help-chk">[x]</span> QQ 音乐 Tm 格式 (.tm0/.tm2/.tm3/.tm6)</li>
+            <li><span class="ff-help-chk">[x]</span> QQ 音乐新格式 (.mflac/.mgg/.mflac0/.mgg1/.mggl)</li>
+            <li><span class="ff-help-chk">[x]</span> QQ 音乐海外版 JOOX Music (.ofl_en)</li>
+            <li><span class="ff-help-chk">[x]</span> 网易云音乐格式 (.ncm)</li>
+            <li><span class="ff-help-chk">[x]</span> 虾米音乐格式 (.xm)</li>
+            <li><span class="ff-help-chk">[x]</span> 酷我音乐格式 (.kwm)</li>
+            <li><span class="ff-help-chk">[x]</span> 酷狗音乐格式 (.kgm/.vpr)</li>
+            <li><span class="ff-help-chk">[x]</span> Android 版喜马拉雅文件格式 (.x2m/.x3m)</li>
+            <li><span class="ff-help-chk">[x]</span> 咪咕音乐格式 (.mg3d)</li>
+          </ul>
         </div>
       </div>
 
@@ -146,9 +172,12 @@
     <el-dialog title="设置" :visible.sync="showSettingsDialog" width="440px" class="ff-set-dialog">
       <div class="ff-set-row">
         <div class="ff-set-label">命名格式</div>
-        <el-radio-group v-model="filename_policy" size="small">
-          <el-radio v-for="k in FilenamePolicies" :key="k.key" :label="k.key">{{ k.text }}</el-radio>
-        </el-radio-group>
+        <div class="ff-set-control">
+          <el-radio-group v-model="filename_policy" size="small">
+            <el-radio v-for="k in FilenamePolicies" :key="k.key" :label="k.key">{{ k.text }}</el-radio>
+          </el-radio-group>
+          <div class="ff-set-desc">决定解锁后文件的保存文件名，例如「歌手 - 歌曲名.mp3」</div>
+        </div>
       </div>
       <span slot="footer">
         <el-button type="primary" @click="showSettingsDialog = false">完成</el-button>
@@ -182,6 +211,12 @@
         <div class="ff-about-row">
           <div class="ff-about-label">支持格式</div>
           <div class="ff-about-value">网易云音乐(ncm) · QQ音乐(qmc / mflac / mgg) · 酷狗音乐(kgm) · 虾米音乐(xm) · 酷我音乐(kwm)</div>
+        </div>
+        <div class="ff-about-row">
+          <div class="ff-about-label">功能特性</div>
+          <div class="ff-about-value">
+            拖放 / 批量解锁 · 本地离线运算（文件不上传）· 多线程加速 · 解锁后试听 · 编辑歌名 / 歌手 / 专辑封面 · 自定义命名格式与输出为 MP3
+          </div>
         </div>
         <div class="ff-about-row">
           <div class="ff-about-label">相关链接</div>
@@ -273,9 +308,10 @@
 }
 .ff-nav-item {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 8px 10px;
   margin: 2px 0;
   border-radius: 8px;
   color: var(--um-text-main);
@@ -296,7 +332,21 @@
     i {
       color: #fff;
     }
+    .ff-nav-desc {
+      color: rgba(255, 255, 255, 0.88);
+    }
   }
+}
+.ff-nav-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ff-nav-desc {
+  padding-left: 24px; // 与标题对齐（图标 16 + 间距 8）
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--um-text-comment);
 }
 .ff-side-drop.ff-compact {
   // 注意：scss 中不能用 >>>（会被编译成无效的 "> > >"），必须用 ::v-deep
@@ -364,6 +414,8 @@
   overflow: auto;
   min-height: 0;
   position: relative;
+  display: flex;
+  flex-direction: column;
   &.is-dragover {
     outline: 2px dashed #409eff;
     outline-offset: -6px;
@@ -385,6 +437,54 @@
 }
 .ff-list {
   margin-top: 16px;
+  // 填满剩余高度，把「使用方法」卡片压到贴近状态栏，避免下方留白
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+// 使用方法与支持的格式
+.ff-help {
+  margin: 20px 0 0;
+  padding: 16px 18px;
+  border: 1px solid var(--um-panel-border);
+  border-radius: 10px;
+  background: var(--um-panel-bg);
+  flex-shrink: 0;
+}
+.ff-help-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--um-text-main);
+  margin-bottom: 8px;
+}
+.ff-help-usage {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--um-text-comment);
+}
+.ff-help-formats {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 6px 24px;
+}
+.ff-help-formats li {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--um-text-main);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.ff-help-chk {
+  flex-shrink: 0;
+  color: #67c23a;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
 }
 .ff-status {
   display: flex;
@@ -585,6 +685,11 @@
 
 // 空状态
 .um-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   text-align: center;
   color: var(--um-text-comment);
   padding: 48px 0;
@@ -633,7 +738,7 @@
 .ff-set-dialog {
   .ff-set-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 16px;
     padding: 14px 4px;
     & + .ff-set-row {
@@ -645,6 +750,17 @@
     flex-shrink: 0;
     font-weight: 600;
     color: var(--um-text-main);
+    padding-top: 6px;
+  }
+  .ff-set-control {
+    flex: 1;
+    min-width: 0;
+  }
+  .ff-set-desc {
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--um-text-comment);
   }
 }
 </style>
