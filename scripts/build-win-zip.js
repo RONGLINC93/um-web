@@ -91,7 +91,7 @@ function main() {
   const readme = [
     '音乐解锁 ' + version + '（Windows 本地版）',
     '',
-    '基于 Unlock Music 上游项目的二次开发版本，界面改为格式工厂风格。',
+    '基于 Unlock Music 上游项目的二次开发版本，界面改为左侧导航 + 任务列表布局。',
     '上游作者：MengYX（MIT 许可协议）；修改维护：RONGLINC93。',
     '',
     '【使用方法】',

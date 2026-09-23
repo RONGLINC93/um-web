@@ -60,9 +60,11 @@ export function RemoveBlobMusic(data: DecryptResult) {
 
 export class DecryptQueue {
   private readonly pending: (() => Promise<void>)[];
+  private running: boolean;
 
   constructor() {
     this.pending = [];
+    this.running = false;
   }
 
   queue(fn: () => Promise<void>) {
@@ -71,10 +73,15 @@ export class DecryptQueue {
   }
 
   private consume() {
+    if (this.running) return;
     const fn = this.pending.shift();
-    if (fn)
-      fn()
-        .then(() => this.consume)
-        .catch(console.error);
+    if (!fn) return;
+    this.running = true;
+    fn()
+      .catch(console.error)
+      .finally(() => {
+        this.running = false;
+        this.consume();
+      });
   }
 }

@@ -33,7 +33,13 @@
       </div>
 
       <div class="ff-side-drop ff-compact">
-        <file-selector ref="fileSelector" @error="showFail" @success="showSuccess" />
+        <file-selector
+          ref="fileSelector"
+          @add="onTaskAdd"
+          @update="onTaskStatus"
+          @error="showFail"
+          @success="showSuccess"
+        />
       </div>
       <div class="ff-side-tip">所有运算在本机完成<br />文件不会上传到任何服务器</div>
     </aside>
@@ -42,7 +48,7 @@
     <main class="ff-main">
       <!-- 顶部工具栏 -->
       <div class="ff-toolbar">
-        <el-button type="primary" icon="el-icon-video-play" :disabled="tableData.length === 0" @click="handleDownloadAll">全部下载</el-button>
+        <el-button type="primary" icon="el-icon-video-play" :disabled="unlockedRows.length === 0" @click="handleDownloadAll">全部下载</el-button>
         <el-button icon="el-icon-download" :disabled="selectedRows.length === 0" @click="handleDownloadSelected">下载选中</el-button>
         <el-button icon="el-icon-delete" :disabled="selectedRows.length === 0" @click="handleDeleteSelected">删除选中</el-button>
         <el-button icon="el-icon-delete" plain @click="handleDeleteAll">清空</el-button>
@@ -164,6 +170,8 @@
       <!-- 底部状态栏 -->
       <div class="ff-status">
         <span>任务总数：{{ tableData.length }}</span>
+        <span>已解锁：{{ unlockedRows.length }}</span>
+        <span>解锁中：{{ processingCount }}</span>
         <span>已选中：{{ selectedRows.length }}</span>
         <span>输出格式：{{ outputFormat === 'mp3' ? 'MP3（128kbps）' : '原始格式' }}</span>
       </div>
@@ -918,7 +926,7 @@ import EditDialog from '@/component/EditDialog';
 import config from '@/../package.json';
 
 import { DownloadBlobMusic, FilenamePolicy, FilenamePolicies, GetDownloadFilename, RemoveBlobMusic, DirectlyWriteFile } from '@/utils/utils';
-import { GetImageFromURL, RewriteMetaToMp3, RewriteMetaToFlac, AudioMimeType, split_regex } from '@/decrypt/utils';
+import { GetImageFromURL, RewriteMetaToMp3, RewriteMetaToFlac, AudioMimeType, split_regex, SplitFilename } from '@/decrypt/utils';
 import { parseBlob as metaParseBlob } from 'music-metadata-browser';
 import { transcodeToMp3 } from '@/utils/transcode';
 import JSZip from 'jszip';
@@ -979,6 +987,14 @@ export default {
       const parts = [this.playing_row.artist, this.playing_row.album].filter((v) => !!v);
       return parts.length ? parts.join(' · ') : String(this.playing_row.ext || '').toUpperCase();
     },
+    // 已完成解锁、可下载/播放的行
+    unlockedRows() {
+      return this.tableData.filter((row) => row._status === 'done');
+    },
+    // 排队中 + 正在解锁的数量
+    processingCount() {
+      return this.tableData.filter((row) => row._status === 'queued' || row._status === 'processing').length;
+    },
     // 进度条已播放部分的渐变背景
     seekStyle() {
       const percent = this.playerDuration
@@ -1006,12 +1022,62 @@ export default {
     updateMobile() {
       this.isMobile = window.matchMedia('(max-width: 768px)').matches;
     },
-    async showSuccess(data) {
-      if (this.instant_save) {
-        await this.saveFile(data);
-        RemoveBlobMusic(data);
+    statusText(status) {
+      switch (status) {
+        case 'queued':
+          return '排队解锁中';
+        case 'processing':
+          return '正在解锁中';
+        case 'done':
+          return '解锁完成';
+        case 'failed':
+          return '解锁失败';
+        default:
+          return '未知状态';
+      }
+    },
+    // 文件一导入就落入列表，初始状态为「排队解锁中」
+    onTaskAdd({ id, name }) {
+      const raw = SplitFilename(name);
+      this.tableData.push({
+        _id: id,
+        _status: 'queued',
+        title: raw.name,
+        album: '',
+        artist: '',
+        genre: '',
+        albumartist: '',
+        mime: '',
+        ext: '',
+        file: '',
+        blob: null,
+        picture: '',
+        rawExt: raw.ext,
+        rawFilename: raw.name,
+      });
+    },
+    onTaskStatus({ id, status }) {
+      const row = this.tableData.find((item) => item._id === id);
+      if (row) row._status = status;
+    },
+    async showSuccess({ id, data }) {
+      const row = this.tableData.find((item) => item._id === id);
+      if (row) {
+        // 逐个字段赋值，保持 Vue 2 响应式（避免 Object.assign 新增未声明字段）
+        Object.keys(data).forEach((key) => {
+          this.$set(row, key, data[key]);
+        });
+        row._status = 'done';
       } else {
         this.tableData.push(data);
+      }
+      if (this.instant_save) {
+        await this.saveFile(row || data);
+        RemoveBlobMusic(data);
+        // 立即保存模式下不保留在列表里
+        const i = this.tableData.indexOf(row || data);
+        if (i > -1) this.tableData.splice(i, 1);
+      } else {
         this.$notify.success({
           title: '解锁成功',
           message: '成功解锁 ' + data.title,
@@ -1019,8 +1085,14 @@ export default {
         });
       }
       if (process.env.NODE_ENV === 'production') {
-        let _rp_data = [data.title, data.artist, data.album];
-        window._paq.push(['trackEvent', 'Unlock', data.rawExt + ',' + data.mime, JSON.stringify(_rp_data)]);
+        const _rp_data = [data.title, data.artist, data.album];
+        this.trackEvent('Unlock', data.rawExt + ',' + data.mime, JSON.stringify(_rp_data));
+      }
+    },
+    trackEvent(category, action, name) {
+      // 统计脚本（Matomo）可能未加载或被拦截，不能因为缺少 _paq 抛错
+      if (window._paq && Array.isArray(window._paq)) {
+        window._paq.push(['trackEvent', category, action, name]);
       }
     },
     showFail(errInfo, filename) {
@@ -1036,7 +1108,7 @@ export default {
         duration: 6000,
       });
       if (process.env.NODE_ENV === 'production') {
-        window._paq.push(['trackEvent', 'Error', String(errInfo), filename]);
+        this.trackEvent('Error', String(errInfo), filename);
       }
     },
     changePlaying(row) {
@@ -1107,8 +1179,9 @@ export default {
       this.selectedRows = rows;
     },
     handleDownloadSelected() {
-      if (this.selectedRows.length === 0) return;
-      this.downloadWithFormat(this.selectedRows.slice());
+      const list = this.selectedRows.filter((row) => row._status === 'done');
+      if (list.length === 0) return;
+      this.downloadWithFormat(list);
     },
     handleDeleteSelected() {
       const list = this.selectedRows.slice();
@@ -1120,7 +1193,7 @@ export default {
       this.selectedRows = [];
     },
     handleDownloadAll() {
-      this.downloadWithFormat(this.tableData.slice());
+      this.downloadWithFormat(this.unlockedRows.slice());
     },
     // 按当前「输出格式」导出：single=单文件直接保存，否则打包 ZIP
     downloadWithFormat(list, mode = 'zip') {

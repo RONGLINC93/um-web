@@ -255,6 +255,8 @@ export function RewriteMetaToFlac(audioData: Buffer, info: IMusicMeta, original:
 
 export function SplitFilename(n: string): { name: string; ext: string } {
   const pos = n.lastIndexOf('.');
+  // 无扩展名时（如部分缓存文件），整个文件名视为名称
+  if (pos < 0) return { name: n, ext: '' };
   return {
     ext: n.substring(pos + 1).toLowerCase(),
     name: n.substring(0, pos),

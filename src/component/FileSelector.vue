@@ -24,12 +24,9 @@
         </el-tooltip>
       </span>
       <span>
-        工作模式: {{ parallel ? '多线程 Worker' : '单线程 Queue' }}
+        串行解锁：导入后按文件一个一个依次解锁
         <el-tooltip effect="dark" placement="top-start">
-          <div slot="content">
-            将此工具部署在 HTTPS 环境下，可启用 Web Worker 特性，<br />
-            从而更快的利用并行处理完成解锁
-          </div>
+          <div slot="content">逐个解锁可避免大量文件同时占用内存，列表中可实时查看每个文件的状态</div>
           <i class="el-icon-info" />
         </el-tooltip>
       </span>
@@ -48,7 +45,6 @@
 </template>
 
 <script>
-import { spawn, Worker, Pool } from 'threads';
 import { Decrypt } from '@/decrypt';
 import { DecryptQueue } from '@/utils/utils';
 import { storage } from '@/utils/storage';
@@ -59,8 +55,8 @@ export default {
     return {
       task_all: 0,
       task_finished: 0,
-      queue: new DecryptQueue(), // for http or file protocol
-      parallel: false,
+      queue: new DecryptQueue(), // 严格串行：一次只解锁一个文件
+      seq: 0,
     };
   },
   computed: {
@@ -71,32 +67,38 @@ export default {
       return this.task_all !== this.task_finished;
     },
   },
-  mounted() {
-    if (window.Worker && window.location.protocol !== 'file:' && process.env.NODE_ENV === 'production') {
-      console.log('Using Worker Pool');
-      this.queue = Pool(() => spawn(new Worker('@/utils/worker.ts')), navigator.hardwareConcurrency || 1);
-      this.parallel = true;
-    } else {
-      console.log('Using Queue in Main Thread');
-    }
-  },
   methods: {
     progress_string() {
       return `${this.task_finished} / ${this.task_all}`;
     },
     async addFile(file) {
+      const id = ++this.seq;
       this.task_all++;
-      this.queue.queue(async (dec = Decrypt) => {
+      // 先通知外部建立列表项（排队中），再串行解锁
+      this.$emit('add', { id, name: file.name, size: file.size });
+      this.queue.queue(async () => {
         console.log('start handling', file.name);
         try {
-          this.$emit('success', await dec(file, await storage.getAll()));
+          this.$emit('update', { id, status: 'processing' });
+          const data = await this.withTimeout(Decrypt(file, await storage.getAll()));
+          this.$emit('update', { id, status: 'done' });
+          this.$emit('success', { id, data });
         } catch (e) {
           console.error(e);
+          this.$emit('update', { id, status: 'failed' });
           this.$emit('error', e, file.name);
         } finally {
           this.task_finished++;
         }
       });
+    },
+    withTimeout(promise, ms = 120000) {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('处理超时，请重试或减少并发文件数')), ms)
+        ),
+      ]);
     },
   },
 };

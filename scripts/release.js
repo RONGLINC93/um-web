@@ -203,7 +203,7 @@ async function main() {
     const body = [
       '## 音乐解锁 ' + version,
       '',
-      '基于 Unlock Music 上游项目的二次开发版本（界面为格式工厂风格）。',
+      '基于 Unlock Music 上游项目的二次开发版本（界面为左侧导航 + 任务列表布局）。',
       '上游作者：MengYX（MIT 许可协议）；修改维护：RONGLINC93。',
       '',
       '### 下载说明',
