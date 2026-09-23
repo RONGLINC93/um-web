@@ -19,6 +19,27 @@ if not exist .env (
   exit /b 1
 )
 
+rem --- Step 0: package first (fpk builds dist via npm run build, then win-zip reuses it) ---
+echo === Step 0: Build packages (fpk / win-zip) ===
+echo.
+
+echo [A] Build fnOS fpk ...
+call 打包fpk.bat < nul
+if not "%ERRORLEVEL%"=="0" (
+  echo   ERROR: fpk build failed.
+  pause
+  exit /b 1
+)
+
+echo [B] Build Windows zip ...
+call 打包win-zip.bat < nul
+if not "%ERRORLEVEL%"=="0" (
+  echo   ERROR: win-zip build failed.
+  pause
+  exit /b 1
+)
+
+rem --- Step 1: publish to GitHub Release ---
 node scripts\release.js > 发布日志.txt 2>&1
 set "RC=%ERRORLEVEL%"
 
@@ -26,11 +47,11 @@ echo.
 type 发布日志.txt
 echo.
 if not "%RC%"=="0" (
-  echo   发布失败，退出码 %RC%。详情见 发布日志.txt。
+  echo   Publish failed, exit code %RC%. See 发布日志.txt for details.
   pause
   exit /b %RC%
 )
 
-echo   发布完成，详情见 发布日志.txt。
+echo   Publish finished. See 发布日志.txt for details.
 pause
 exit /b 0
