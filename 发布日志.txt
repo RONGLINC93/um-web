@@ -1,0 +1,18 @@
+=== 发布 GitHub Release ===
+
+仓库: RONGLINC93/um-web
+版本: v1.10.8
+
+[1/4] 已存在 Windows 压缩包: umweb-1.10.8-win.zip
+[2/4] 收集附件 ...
+  - umweb-1.10.8-win.zip
+  - umweb-1.10.8.fpk
+
+[3/4] 准备 Release ...
+  已创建 Release（ID 394248214）。
+
+[4/4] 上传附件 ...
+  已上传: umweb-1.10.8-win.zip (1.37 MB)
+  已上传: umweb-1.10.8.fpk (1.51 MB)
+
+发布完成: https://github.com/RONGLINC93/um-web/releases/tag/v1.10.8

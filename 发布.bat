@@ -1,8 +1,8 @@
 @echo off
 rem ===========================================================================
-rem  发布.bat - 在 GitHub 创建 Release 并上传附件（win-zip / fpk）
-rem  实际逻辑由 Node.js 实现: scripts\release.js（自动读取根目录 .env 中的令牌）
-rem  版本号与 tag 取自 package.json: v<version>
+rem  发布.bat - Create GitHub Release and upload assets (win-zip / fpk)
+rem  Logic is implemented in Node.js: scripts\release.js (reads token from .env)
+rem  Version and tag come from package.json: v<version>
 rem ===========================================================================
 chcp 65001 >nul
 setlocal
@@ -10,8 +10,8 @@ set "NODE_OPTIONS=--openssl-legacy-provider"
 cd /d "%~dp0"
 
 if not exist .env (
-  echo   ERROR: 缺少 .env 文件。
-  echo   请在项目根目录创建 .env，内容例如：
+  echo   ERROR: .env file not found.
+  echo   Create .env in project root, for example:
   echo     GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
   echo     GITHUB_REPO_URL=https://github.com/RONGLINC93/um-web.git
   echo.
