@@ -7,15 +7,6 @@
         <span>音乐解锁</span>
       </div>
       <div class="ff-nav">
-        <div class="ff-nav-group">输出音频格式</div>
-        <div class="ff-nav-item" :class="{ active: outputFormat === 'mp3' }" @click="outputFormat = 'mp3'">
-          <div class="ff-nav-main"><i class="el-icon-files" /> MP3</div>
-          <div class="ff-nav-desc">转为通用 MP3（约 128kbps），兼容性最好</div>
-        </div>
-        <div class="ff-nav-item" :class="{ active: outputFormat === 'original' }" @click="outputFormat = 'original'">
-          <div class="ff-nav-main"><i class="el-icon-document" /> 原始格式</div>
-          <div class="ff-nav-desc">保持原文件编码与音质，不做转码</div>
-        </div>
         <div class="ff-nav-group">工具</div>
         <div class="ff-nav-item" @click="showConfigDialog = true">
           <div class="ff-nav-main"><i class="el-icon-setting" /> 解密设定</div>
@@ -50,6 +41,8 @@
       <div class="ff-toolbar">
         <el-button type="primary" icon="el-icon-video-play" :disabled="unlockedRows.length === 0" @click="handleDownloadAll">全部下载</el-button>
         <el-button icon="el-icon-download" :disabled="selectedRows.length === 0" @click="handleDownloadSelected">下载选中</el-button>
+        <el-button icon="el-icon-refresh-right" :disabled="convertibleSelected.length === 0" @click="convertSelectedToMp3">选中转 MP3</el-button>
+        <el-button v-if="convertQueued > 0" icon="el-icon-circle-close" type="danger" plain @click="cancelAllConvert">取消转换</el-button>
         <el-button icon="el-icon-delete" :disabled="selectedRows.length === 0" @click="handleDeleteSelected">删除选中</el-button>
         <el-button icon="el-icon-delete" plain @click="handleDeleteAll">清空</el-button>
         <span class="ff-tool-spacer" />
@@ -79,6 +72,8 @@
             :policy="filename_policy"
             :table-data="tableData"
             @download="downloadWithFormat([$event], 'single')"
+            @convert="convertToMp3"
+            @cancel-convert="cancelConvert"
             @edit="editFile"
             @play="changePlaying"
             @selection-change="onSelectionChange"
@@ -92,7 +87,7 @@
             <i class="ff-help-toggle el-icon-arrow-down" />
           </summary>
           <p class="ff-help-usage">
-            将加密音乐文件拖入拖拽区，或点击「选择文件」添加；选择输出格式后，使用顶部工具栏下载即可解锁。
+            将加密音乐文件拖入拖拽区，或点击「选择文件」添加；解锁完成后可单独或批量转为 MP3，再用顶部工具栏下载。
           </p>
           <ul class="ff-help-formats">
             <li><span class="ff-help-chk">[x]</span> QQ 音乐 (.qmc0/.qmc2/.qmc3/.qmcflac/.qmcogg/.tkm)</li>
@@ -173,7 +168,7 @@
         <span>已解锁：{{ unlockedRows.length }}</span>
         <span>解锁中：{{ processingCount }}</span>
         <span>已选中：{{ selectedRows.length }}</span>
-        <span>输出格式：{{ outputFormat === 'mp3' ? 'MP3（128kbps）' : '原始格式' }}</span>
+        <span>已转 MP3：{{ convertedCount }}</span>
       </div>
     </main>
 
@@ -258,13 +253,6 @@
       </span>
     </el-dialog>
 
-    <div v-if="mp3ProgressVisible" class="mp3-progress-mask">
-      <div class="mp3-progress-card">
-        <div class="mp3-progress-title">转换进度</div>
-        <el-progress type="circle" :width="120" :percentage="mp3Progress" :status="mp3ProgressError ? 'exception' : undefined" />
-        <p class="mp3-progress-text">{{ mp3ProgressText }}</p>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -735,34 +723,6 @@
   }
 }
 
-.mp3-progress-mask {
-  position: fixed;
-  inset: 0;
-  z-index: 3000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.45);
-}
-.mp3-progress-card {
-  background: #fff;
-  border-radius: 8px;
-  padding: 24px 32px;
-  text-align: center;
-  min-width: 280px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-}
-.mp3-progress-title {
-  font-weight: 600;
-  margin-bottom: 12px;
-  font-size: 16px;
-}
-.mp3-progress-text {
-  margin-top: 12px;
-  word-break: break-all;
-  color: #606266;
-}
-
 // 设置弹窗
 .ff-set-dialog {
   .ff-set-row {
@@ -925,10 +885,10 @@ import ConfigDialog from '@/component/ConfigDialog';
 import EditDialog from '@/component/EditDialog';
 import config from '@/../package.json';
 
-import { DownloadBlobMusic, FilenamePolicy, FilenamePolicies, GetDownloadFilename, RemoveBlobMusic, DirectlyWriteFile } from '@/utils/utils';
+import { DownloadBlobMusic, FilenamePolicy, FilenamePolicies, GetDownloadFilename, RemoveBlobMusic, DirectlyWriteFile, DecryptQueue } from '@/utils/utils';
 import { GetImageFromURL, RewriteMetaToMp3, RewriteMetaToFlac, AudioMimeType, split_regex, SplitFilename } from '@/decrypt/utils';
 import { parseBlob as metaParseBlob } from 'music-metadata-browser';
-import { transcodeToMp3 } from '@/utils/transcode';
+import { transcodeToMp3, ConvertCancelled } from '@/utils/transcode';
 import JSZip from 'jszip';
 
 export default {
@@ -948,6 +908,9 @@ export default {
       version: config.version,
       editing_data: { picture: '', title: '', artist: '', album: '', albumartist: '', genre: '' },
       tableData: [],
+      convertQueue: new DecryptQueue(), // MP3 转换队列，与解锁队列分开，同样串行执行
+      convertQueued: 0, // 队列中（含正在转换）的转换任务数
+      convertCancelAll: false, // 批量取消标志
       playing_url: '',
       playing_auto: false,
       filename_policy: FilenamePolicy.ArtistAndTitle,
@@ -955,11 +918,7 @@ export default {
       FilenamePolicies,
       dir: null,
       selectedRows: [],
-      outputFormat: 'original', // 'original' | 'mp3'
-      mp3ProgressVisible: false,
-      mp3Progress: 0,
-      mp3ProgressError: false,
-      mp3ProgressText: '',
+
       dragDepth: 0,
       playerExpanded: false,
       isMobile: false,
@@ -989,7 +948,15 @@ export default {
     },
     // 已完成解锁、可下载/播放的行
     unlockedRows() {
-      return this.tableData.filter((row) => row._status === 'done');
+      return this.tableData.filter((row) => row._status === 'done' || row._status === 'converted');
+    },
+    // 已转成 MP3 的行数
+    convertedCount() {
+      return this.tableData.filter((row) => row.ext === 'mp3').length;
+    },
+    // 可转为 MP3 的已选中行（已完成解锁且当前不是 MP3）
+    convertibleSelected() {
+      return this.selectedRows.filter((row) => this.isRowReady(row) && row.ext !== 'mp3');
     },
     // 排队中 + 正在解锁的数量
     processingCount() {
@@ -1022,26 +989,13 @@ export default {
     updateMobile() {
       this.isMobile = window.matchMedia('(max-width: 768px)').matches;
     },
-    statusText(status) {
-      switch (status) {
-        case 'queued':
-          return '排队解锁中';
-        case 'processing':
-          return '正在解锁中';
-        case 'done':
-          return '解锁完成';
-        case 'failed':
-          return '解锁失败';
-        default:
-          return '未知状态';
-      }
-    },
     // 文件一导入就落入列表，初始状态为「排队解锁中」
     onTaskAdd({ id, name }) {
       const raw = SplitFilename(name);
       this.tableData.push({
         _id: id,
         _status: 'queued',
+        _progress: 0,
         title: raw.name,
         album: '',
         artist: '',
@@ -1077,13 +1031,8 @@ export default {
         // 立即保存模式下不保留在列表里
         const i = this.tableData.indexOf(row || data);
         if (i > -1) this.tableData.splice(i, 1);
-      } else {
-        this.$notify.success({
-          title: '解锁成功',
-          message: '成功解锁 ' + data.title,
-          duration: 3000,
-        });
       }
+      // 成功不再逐个弹窗，列表中已用状态列体现
       if (process.env.NODE_ENV === 'production') {
         const _rp_data = [data.title, data.artist, data.album];
         this.trackEvent('Unlock', data.rawExt + ',' + data.mime, JSON.stringify(_rp_data));
@@ -1179,7 +1128,9 @@ export default {
       this.selectedRows = rows;
     },
     handleDownloadSelected() {
-      const list = this.selectedRows.filter((row) => row._status === 'done');
+      const list = this.selectedRows.filter(
+        (row) => row._status === 'done' || row._status === 'converted'
+      );
       if (list.length === 0) return;
       this.downloadWithFormat(list);
     },
@@ -1195,57 +1146,113 @@ export default {
     handleDownloadAll() {
       this.downloadWithFormat(this.unlockedRows.slice());
     },
-    // 按当前「输出格式」导出：single=单文件直接保存，否则打包 ZIP
-    downloadWithFormat(list, mode = 'zip') {
-      if (!list.length) return;
-      const asMp3 = this.outputFormat === 'mp3';
-      if (mode === 'single' && list.length === 1) {
-        this.saveFile(list[0], asMp3);
-      } else {
-        this.downloadAsZip(list, asMp3);
+    // 把某一行就地转为 MP3：转换后该行格式即变为 MP3，进度显示在行内
+    convertToMp3(row) {
+      if (!row || row.ext === 'mp3' || !this.isRowReady(row)) return;
+      if (row._status === 'converting') return; // 已在转换队列中
+      this.$set(row, '_cancel', false);
+      // 先置为「等待转换」，真正轮到它执行时才变成「转换中」
+      this.$set(row, '_status', 'convert-queued');
+      this.convertQueued++;
+      this.convertQueue.queue(async () => {
+        // 批量取消或单独取消后、仍未开始的任务直接跳过
+        if (this.convertCancelAll || row._cancel) {
+          if (row._status === 'convert-queued') this.$set(row, '_status', 'done');
+          this.convertQueued--;
+          if (this.convertQueued === 0) this.convertCancelAll = false;
+          return;
+        }
+        this.$set(row, '_status', 'converting');
+        this.$set(row, '_progress', 0);
+        try {
+          const mp3Blob = await transcodeToMp3(
+            row.blob,
+            128,
+            (p) => this.$set(row, '_progress', p),
+            () => row._cancel === true
+          );
+          const file = URL.createObjectURL(mp3Blob);
+          // 释放旧的原始音频 URL（正在播放的那条不释放，避免播放中断）
+          if (row.file && row.file.startsWith('blob:') && this.playing_url !== row.file) {
+            URL.revokeObjectURL(row.file);
+          }
+          this.$set(row, 'blob', mp3Blob);
+          this.$set(row, 'ext', 'mp3');
+          this.$set(row, 'mime', 'audio/mpeg');
+          this.$set(row, 'file', file);
+          this.$set(row, '_progress', 100);
+          this.$set(row, '_status', 'converted');
+        } catch (e) {
+          if (e instanceof ConvertCancelled) {
+            // 用户取消：回到解锁完成状态，保留原始格式
+            this.$set(row, '_progress', 0);
+            this.$set(row, '_status', 'done');
+          } else {
+            console.error('MP3 转码失败', e);
+            this.$set(row, '_status', 'done');
+            this.$notify.warning({
+              title: 'MP3 转码失败',
+              message: '仍是原始格式：' + row.title,
+              duration: 3000,
+            });
+          }
+        } finally {
+          this.$set(row, '_cancel', false);
+          this.convertQueued--;
+          if (this.convertQueued === 0) this.convertCancelAll = false;
+        }
+      });
+    },
+    // 取消某一行的转换：排队中立即退出，转换中在下一个分片生效
+    cancelConvert(row) {
+      if (!row) return;
+      if (row._status === 'convert-queued') {
+        this.$set(row, '_cancel', true);
+        this.$set(row, '_status', 'done');
+      } else if (row._status === 'converting') {
+        this.$set(row, '_cancel', true);
       }
     },
-    async downloadAsZip(list, asMp3 = false) {
+    // 取消全部转换：正在转的立即中止，排队中的直接跳过
+    cancelAllConvert() {
+      this.convertCancelAll = true;
+      this.tableData.forEach((row) => {
+        if (row._status === 'converting') this.$set(row, '_cancel', true);
+        // 排队中的直接退出队列
+        if (row._status === 'convert-queued') {
+          this.$set(row, '_cancel', true);
+          this.$set(row, '_status', 'done');
+        }
+      });
+      if (this.convertQueued === 0) this.convertCancelAll = false;
+    },
+    convertSelectedToMp3() {
+      this.convertibleSelected.forEach((row) => this.convertToMp3(row));
+    },
+    isRowReady(row) {
+      return row._status === 'done' || row._status === 'converted';
+    },
+    // 按各行自己的格式导出（可能混合 MP3 与原始格式）：single=单文件直接保存，否则打包 ZIP
+    downloadWithFormat(list, mode = 'zip') {
       if (!list.length) return;
-      this.mp3ProgressVisible = asMp3;
-      this.mp3ProgressError = false;
-      this.mp3Progress = 0;
-      this.mp3ProgressText = `正在打包 ${list.length} 个文件...`;
-      await this.$nextTick();
-      const mp3Start = Date.now();
-      const closeProgress = async () => {
-        const wait = 600 - (Date.now() - mp3Start);
-        if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-        this.mp3ProgressVisible = false;
-      };
+      if (mode === 'single' && list.length === 1) {
+        this.saveFile(list[0]);
+      } else {
+        this.downloadAsZip(list);
+      }
+    },
+    async downloadAsZip(list) {
+      if (!list.length) return;
       try {
         const zip = new JSZip();
         const used = {};
-        const total = list.length;
-        let done = 0;
         for (const item of list) {
-          let out = item;
-          if (asMp3 && item.ext !== 'mp3') {
-            try {
-              const mp3Blob = await transcodeToMp3(item.blob, 128, (p) => {
-                const per = ((done + p / 100) / total) * 100;
-                this.mp3Progress = Math.round(per);
-                this.mp3ProgressText = `正在转换 (${done + 1}/${total})：${item.title} ${p}%`;
-              });
-              out = { ...item, blob: mp3Blob, ext: 'mp3' };
-            } catch (e) {
-              console.error('MP3 转码失败，回退原始格式', e);
-            }
-          }
-          let name = GetDownloadFilename(out, this.filename_policy);
+          let name = GetDownloadFilename(item, this.filename_policy);
           if (used[name]) {
             name = `${used[name]} - ${name}`;
           }
           used[name] = (used[name] || 0) + 1;
-          zip.file(name, out.blob);
-          done++;
-          this.mp3Progress = Math.round((done / total) * 100);
-          this.mp3ProgressText = asMp3 ? `已处理 ${done}/${total}，正在生成 ZIP...` : `已打包 ${done}/${total}`;
+          zip.file(name, item.blob);
         }
         const content = await zip.generateAsync({ type: 'blob' });
         const a = document.createElement('a');
@@ -1256,14 +1263,12 @@ export default {
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-        await closeProgress();
         this.$notify.success({
           title: '打包完成',
           message: `已下载 ${list.length} 个文件的 ZIP 压缩包`,
           duration: 3000,
         });
       } catch (e) {
-        await closeProgress();
         console.error(e);
         this.$notify.error({
           title: '打包失败',
@@ -1316,21 +1321,10 @@ export default {
         notifyMsg = '修改' + this.editing_data.title + '未能完成。在写入新的元数据时发生错误：' + e;
       }
       this.editing_data.file = URL.createObjectURL(this.editing_data.blob);
-      if (writeSuccess === true) {
-        this.$notify.success({
-          title: '修改成功',
-          message: notifyMsg,
-          duration: 3000,
-        });
-      } else if (writeSuccess === false) {
+      // 成功/取消不在弹窗，列表里即可看到结果；仅失败时提示
+      if (writeSuccess === false) {
         this.$notify.error({
           title: '修改失败',
-          message: notifyMsg,
-          duration: 3000,
-        });
-      } else {
-        this.$notify.warning({
-          title: '修改取消',
           message: notifyMsg,
           duration: 3000,
         });
@@ -1344,46 +1338,11 @@ export default {
       this.editing_data.genre = musicMeta.common.genre?.toString() || '';
       this.showEditDialog = true;
     },
-    async saveFile(data, asMp3) {
-      let out = data;
-      const wantMp3 = asMp3 ?? false;
-      if (wantMp3 && data.ext !== 'mp3') {
-        this.mp3ProgressVisible = true;
-        this.mp3ProgressError = false;
-        this.mp3Progress = 0;
-        this.mp3ProgressText = '正在转换为 MP3：' + data.title;
-        await this.$nextTick();
-        const mp3Start = Date.now();
-        try {
-          const mp3Blob = await transcodeToMp3(data.blob, 128, (p) => {
-            this.mp3Progress = p;
-            this.mp3ProgressText = `正在转换为 MP3：${data.title} (${p}%)`;
-          });
-          const file = URL.createObjectURL(mp3Blob);
-          out = { ...data, blob: mp3Blob, ext: 'mp3', file };
-        } catch (e) {
-          console.error('MP3 转码失败，回退原始格式', e);
-          this.mp3ProgressError = true;
-          this.$notify.warning({
-            title: 'MP3 转码失败',
-            message: '已使用原始格式下载 ' + data.title,
-            duration: 3000,
-          });
-        } finally {
-          const wait = 600 - (Date.now() - mp3Start);
-          if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-          this.mp3ProgressVisible = false;
-        }
-      }
+    async saveFile(data) {
+      // 直接按该行当前的格式保存（MP3 或原始格式）
+      const out = data;
       if (this.dir) {
         await DirectlyWriteFile(out, this.filename_policy, this.dir);
-        this.$notify({
-          title: '保存成功',
-          message: out.title,
-          position: 'top-left',
-          type: 'success',
-          duration: 3000,
-        });
       } else {
         DownloadBlobMusic(out, this.filename_policy);
       }

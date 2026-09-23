@@ -31,16 +31,6 @@
         </el-tooltip>
       </span>
     </div>
-    <transition name="el-fade-in">
-      <el-progress
-        v-show="progress_show"
-        :format="progress_string"
-        :percentage="progress_value"
-        :stroke-width="14"
-        :text-inside="true"
-        class="um-dropzone-progress"
-      />
-    </transition>
   </el-upload>
 </template>
 
@@ -53,27 +43,13 @@ export default {
   name: 'FileSelector',
   data() {
     return {
-      task_all: 0,
-      task_finished: 0,
       queue: new DecryptQueue(), // 严格串行：一次只解锁一个文件
       seq: 0,
     };
   },
-  computed: {
-    progress_value() {
-      return this.task_all ? (this.task_finished / this.task_all) * 100 : 0;
-    },
-    progress_show() {
-      return this.task_all !== this.task_finished;
-    },
-  },
   methods: {
-    progress_string() {
-      return `${this.task_finished} / ${this.task_all}`;
-    },
     async addFile(file) {
       const id = ++this.seq;
-      this.task_all++;
       // 先通知外部建立列表项（排队中），再串行解锁
       this.$emit('add', { id, name: file.name, size: file.size });
       this.queue.queue(async () => {
@@ -87,8 +63,6 @@ export default {
           console.error(e);
           this.$emit('update', { id, status: 'failed' });
           this.$emit('error', e, file.name);
-        } finally {
-          this.task_finished++;
         }
       });
     },
@@ -160,8 +134,6 @@ export default {
       font-size: 12px;
     }
   }
-  .um-dropzone-progress {
-    margin: 16px 6px 0;
-  }
+
 }
 </style>
