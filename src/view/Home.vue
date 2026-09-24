@@ -1286,7 +1286,8 @@ export default {
         const content = await zip.generateAsync({ type: 'blob' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(content);
-        const stamp = new Date().toISOString().slice(0, 10);
+        const d = new Date();
+        const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         a.download = `音乐解锁_${stamp}.zip`;
         document.body.append(a);
         a.click();

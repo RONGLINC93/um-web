@@ -55,8 +55,15 @@ function gitQuiet(args) {
 }
 
 // ---------- 提交说明：参数 > 环境变量 > 自动生成，全程不阻塞等待输入 ----------
+function localStamp() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+// ---------- 提交说明：参数 > 环境变量 > 自动生成，全程不阻塞等待输入 ----------
 function resolveMessage(changedCount) {
-  const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const stamp = localStamp();
   const auto = 'chore: 更新 ' + changedCount + ' 个文件 ' + stamp;
   return (process.argv[2] || '').trim() || (process.env.COMMIT_MSG || '').trim() || auto;
 }
