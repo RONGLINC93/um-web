@@ -1118,11 +1118,21 @@ export default {
       });
     },
     handleDeleteAll() {
-      this.tableData.forEach((value) => {
-        RemoveBlobMusic(value);
-      });
-      this.tableData = [];
-      this.selectedRows = [];
+      if (this.tableData.length === 0) return;
+      this.$confirm('确定要清空所有文件吗？此操作不可恢复。', '清空确认', {
+        confirmButtonText: '清空',
+        cancelButtonText: '取消',
+        type: 'warning',
+        center: true,
+      })
+        .then(() => {
+          this.tableData.forEach((value) => {
+            RemoveBlobMusic(value);
+          });
+          this.tableData = [];
+          this.selectedRows = [];
+        })
+        .catch(() => {});
     },
     onSelectionChange(rows) {
       this.selectedRows = rows;
@@ -1135,13 +1145,23 @@ export default {
       this.downloadWithFormat(list);
     },
     handleDeleteSelected() {
-      const list = this.selectedRows.slice();
-      list.forEach((value) => {
-        RemoveBlobMusic(value);
-        const i = this.tableData.indexOf(value);
-        if (i > -1) this.tableData.splice(i, 1);
-      });
-      this.selectedRows = [];
+      if (this.selectedRows.length === 0) return;
+      this.$confirm(`确定要删除选中的 ${this.selectedRows.length} 个文件吗？此操作不可恢复。`, '删除确认', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        center: true,
+      })
+        .then(() => {
+          const list = this.selectedRows.slice();
+          list.forEach((value) => {
+            RemoveBlobMusic(value);
+            const i = this.tableData.indexOf(value);
+            if (i > -1) this.tableData.splice(i, 1);
+          });
+          this.selectedRows = [];
+        })
+        .catch(() => {});
     },
     handleDownloadAll() {
       this.downloadWithFormat(this.unlockedRows.slice());

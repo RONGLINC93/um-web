@@ -202,8 +202,17 @@ export default {
       this.$emit('play', row);
     },
     handleDelete(index, row) {
-      RemoveBlobMusic(row);
-      this.tableData.splice(index, 1);
+      this.$confirm('确定要删除该文件吗？此操作不可恢复。', '删除确认', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        center: true,
+      })
+        .then(() => {
+          RemoveBlobMusic(row);
+          this.tableData.splice(index, 1);
+        })
+        .catch(() => {});
     },
     handleDownload(row) {
       if (!this.isReady(row)) return;
