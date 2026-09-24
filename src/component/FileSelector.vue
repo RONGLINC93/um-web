@@ -3,6 +3,7 @@
     :auto-upload="false"
     :on-change="addFile"
     :show-file-list="false"
+    :accept="accept"
     action=""
     drag
     multiple
@@ -36,7 +37,7 @@
 
 <script>
 import { Decrypt } from '@/decrypt';
-import { DecryptQueue } from '@/utils/utils';
+import { DecryptQueue, SUPPORTED_ACCEPT, isSupportedFile } from '@/utils/utils';
 import { storage } from '@/utils/storage';
 
 export default {
@@ -45,10 +46,16 @@ export default {
     return {
       queue: new DecryptQueue(), // 严格串行：一次只解锁一个文件
       seq: 0,
+      accept: SUPPORTED_ACCEPT,
     };
   },
   methods: {
     async addFile(file) {
+      // el-upload 传入的是 UploadFile 对象，file.name 为文件名
+      if (!isSupportedFile(file.name)) {
+        this.$message.warning(`已跳过不支持的文件：${file.name}`);
+        return;
+      }
       const id = ++this.seq;
       // 先通知外部建立列表项（排队中），再串行解锁
       this.$emit('add', { id, name: file.name, size: file.size });

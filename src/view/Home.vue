@@ -885,7 +885,7 @@ import ConfigDialog from '@/component/ConfigDialog';
 import EditDialog from '@/component/EditDialog';
 import config from '@/../package.json';
 
-import { DownloadBlobMusic, FilenamePolicy, FilenamePolicies, GetDownloadFilename, RemoveBlobMusic, DirectlyWriteFile, DecryptQueue } from '@/utils/utils';
+import { DownloadBlobMusic, FilenamePolicy, FilenamePolicies, GetDownloadFilename, RemoveBlobMusic, DirectlyWriteFile, DecryptQueue, isSupportedFile } from '@/utils/utils';
 import { GetImageFromURL, RewriteMetaToMp3, RewriteMetaToFlac, AudioMimeType, split_regex, SplitFilename } from '@/decrypt/utils';
 import { parseBlob as metaParseBlob } from 'music-metadata-browser';
 import { transcodeToMp3, ConvertCancelled } from '@/utils/transcode';
@@ -1112,10 +1112,19 @@ export default {
       if (!files.length) return;
       const selector = this.$refs.fileSelector;
       if (!selector) return;
+      let skipped = 0;
       files.forEach((f) => {
+        // 拖入时按扩展名过滤，避免把不支持的文件也排进解锁队列
+        if (!isSupportedFile(f.name)) {
+          skipped++;
+          return;
+        }
         // Decrypt 只使用 file.name 与 file.raw，与 el-upload 传入的形态一致
         selector.addFile({ name: f.name, raw: f, size: f.size, uid: Date.now() + Math.random() });
       });
+      if (skipped > 0) {
+        this.$message.warning(`已跳过 ${skipped} 个不支持的文件`);
+      }
     },
     handleDeleteAll() {
       if (this.tableData.length === 0) return;

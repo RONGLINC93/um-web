@@ -15,6 +15,34 @@ export const FilenamePolicies: { key: FilenamePolicy; text: string }[] = [
   { key: FilenamePolicy.SameAsOriginal, text: '同源文件名' },
 ];
 
+// 支持解密/导入的文件扩展名（小写，不含点），与 decrypt/index.ts 的 switch 保持一致
+export const SUPPORTED_EXTENSIONS: string[] = [
+  'mg3d', // 咪咕
+  'ncm', 'uc', // 网易云
+  'kwm', // 酷我
+  'xm', 'wav', 'mp3', 'flac', 'm4a', 'ogg', // 虾米及原始音频
+  'tm0', 'tm3', 'tm2', 'tm6', // QQ 音乐 iOS
+  'qmc0', 'qmc2', 'qmc3', 'qmc4', 'qmc6', 'qmc8', 'qmcflac', 'qmcogg', 'tkm', // QQ 音乐 Android
+  'bkcmp3', 'bkcm4a', 'bkcflac', 'bkcwav', 'bkcape', 'bkcogg', 'bkcwma', // Moo 音乐
+  'mggl', 'mflac', 'mflac0', 'mflach', 'mgg', 'mgg0', 'mgg1', 'mmp4', // QQ 音乐 v2
+  'cache', // QQ 音乐缓存
+  'vpr', 'kgm', 'kgma', // 酷狗
+  'ofl_en', // Joox
+  'x2m', 'x3m', // 喜马拉雅
+];
+
+// el-upload 的 accept 属性字符串，用于文件选择对话框预过滤
+export const SUPPORTED_ACCEPT = SUPPORTED_EXTENSIONS.map((ext) => `.${ext}`).join(',');
+
+export function getFileExt(name: string): string {
+  const i = name.lastIndexOf('.');
+  return i < 0 ? '' : name.slice(i + 1).toLowerCase();
+}
+
+export function isSupportedFile(name: string): boolean {
+  return SUPPORTED_EXTENSIONS.includes(getFileExt(name));
+}
+
 export function GetDownloadFilename(data: DecryptResult, policy: FilenamePolicy): string {
   switch (policy) {
     case FilenamePolicy.TitleOnly:
